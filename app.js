@@ -5,7 +5,6 @@
 //         `Server started succesfully, running on port: ${app.address().port}.`
 //       );
 // })
-import {cathayScraper} from './controllers/scraper';
+import { cathayScraper } from "./controllers/scraper";
 
-cathayScraper();
-
+cathayScraper().then(res => console.log(res));
