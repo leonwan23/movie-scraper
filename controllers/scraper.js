@@ -1,13 +1,47 @@
 import puppeteer from "puppeteer";
 
-async function getCathayElement(page, element) {
-  const fieldChosen = element.charAt(0).toUpperCase() + element.slice(1);
+function capitalizeWord(word) {
+  if (word) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+  return "";
+}
 
-  const divElement = await page.$$eval(
+async function getCathayElement(page, element) {
+  const fieldChosen = capitalizeWord(element);
+
+  const divElement = await page.$eval(
     ".movieDetails > .item > #ContentPlaceHolder1_lbl" + fieldChosen,
     element => element.innerText.trim()
   );
   return divElement;
+}
+
+async function getCathayDetails(page, element) {
+  const fieldChosen = capitalizeWord(element);
+
+  const divElement = await page.$eval(
+    ".pinkDetails > ul > li > #ContentPlaceHolder1_lbl" + fieldChosen,
+    element => element.innerText.trim()
+  );
+  return divElement;
+}
+
+function removeRatingFromTitle(title) {
+  if (title) {
+    return title.slice(0, title.lastIndexOf(" "));
+  }
+  return "No title available";
+}
+
+function getPlatinumCinemas(arr) {
+  if (arr && arr.length > 0) {
+    let cinemas = [...new Set(arr)].filter(
+      element => !element.includes("with")
+    );
+    return cinemas.length > 0 ? cinemas : null;
+  }
+  return null;
 }
 
 export async function cathayScraper() {
@@ -35,57 +69,60 @@ export async function cathayScraper() {
         element => element.innerText.trim()
       );
 
-      const cast = await page.$eval(
-        ".movieDetails > .item > #ContentPlaceHolder1_lblCast",
-        element => element.innerText.trim()
-      );
+      const poster = await page.$eval(".poster > img", img => img.src);
 
-      const director = await page.$eval(
-        ".movieDetails > .item > #ContentPlaceHolder1_lblDirector",
-        element => element.innerText.trim()
-      );
+      const cast = await getCathayElement(page, "cast");
+      const director = await getCathayElement(page, "director");
+      const description = await getCathayElement(page, "description");
 
-      const description = await page.$eval(
-        ".movieDetails > .item > #ContentPlaceHolder1_lblDescription",
-        element => element.innerText.trim()
-      );
+      const language = await getCathayDetails(page, "language");
+      const rating = await getCathayDetails(page, "rating");
+      const runtime = await getCathayDetails(page, "runtime");
+
+      //TODO: COLLECT ALL TABLES THEN ITERATE FROM THERE
+      //   const showtimeTables = await page.$$eval(".tabs", (
+      //       tabs => tabs.map(tab => {
+      //           const a = tab.querySelectorAll(".tabbers")
+      //           const test = Array.from(a, b => b.querySelector(".movie-timings"))
+      //           return test
+      //       })
+      //   ));
+      const data = await page.evaluate(() => {
+        let elements = Array.from(document.querySelectorAll(".tabs"));
+        let test = elements.map(element => {
+          return element;
+        });
+        return test;
+      });
+      data.map(a => console.log(a))
+      //   const b = Array.from(tds).map(td => td.querySelectorAll(".tabbers"));
+
+      //   showtimeTables.map(async table => {
+      //     //   const cinema = await table.$eval(".M_movietitle", el => el.innerText)
+      //     //   console.log(cinema)
+      //       const cinemaContainer = await table.$$(".tabbers > .movie-container")
+      //     //   console.log(cinemaContainer)
+      //       cinemaContainer.map(async container => {
+      //           const cinemaDesc = await container.$eval(".movie-desc > strong", el => el.innerText)
+      //           console.log(cinemaDesc)
+      //       })
+      //   })
 
       results.push({
-        title,
-        cast,
-        director,
-        description
+        title: removeRatingFromTitle(title)
+        // poster,
+        // cast,
+        // director,
+        // description,
+        // language,
+        // rating,
+        // runtime
+        // cinemas
+        // PMS: getPlatinumCinemas(PMS)
       });
     }
     browser.close();
     return results;
-
-    // const assetUrls = await page.$$eval('.table-assets > tbody > tr .col-actions a:first-child', assetLinks => assetLinks.map(link => link.href));
-
-    // const results = [];
-
-    // // Visit each assets page one by one
-    // for (let assetsUrl of assetUrls) {
-    //     await page.goto(assetsUrl);
-
-    //     // Now collect all the ICO urls.
-    //     const icoUrls = await page.$$eval('#page-wrapper > main > div.container > div > table > tbody > tr > td:nth-child(2) a', links => links.map(link => link.href));
-
-    //     // Visit each ICO one by one and collect the data.
-    //     for (let icoUrl of icoUrls) {
-    //         await page.goto(icoUrl);
-
-    //         const icoImgUrl = await page.$eval('#asset-logo-wrapper img', img => img.src);
-    //         const icoName = await page.$eval('h1', h1 => h1.innerText.trim());
-    //         // TODO: Gather all the needed info like description etc here.
-
-    //         results.push([{
-    //             icoName,
-    //             icoUrl,
-    //             icoImgUrl
-    //         }]);
-    //     }
-    // }
   } catch (e) {
     console.log(e);
   }

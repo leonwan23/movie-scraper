@@ -1,0 +1,41 @@
+version: "3"
+
+services:
+  reverse-proxy:
+    image: traefik
+    command: --api --docker.exposedbydefault=false
+    ports:
+      - "80:80"     # The HTTP port
+      - "8080:8080" # The Web UI (enabled by --api)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
+
+  movie-api:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    #command: sh -c './docker/wait-for.sh xcap-api-db:5432 && npm run migrate'
+    volumes:
+      - ".:/app"
+      - /app/node_modules
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:movie-api.localhost"
+    links:
+      - movie-api-db
+
+  movie-api-db:
+    image: postgres:10.4-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: movie-scraper
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+    volumes:
+      - ./extra/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
+      - movie-pg-data:/var/lib/postgresql/data/
+    ports:
+      - '5438:5432'
+
+volumes:
+  movie-pg-data:
